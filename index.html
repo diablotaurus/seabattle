@@ -7,7 +7,8 @@
 <title>Морской бой</title>
 <style>
   :root{
-    --cell: clamp(22px, calc((100vw - 80px) / 10.7), 34px);
+    /* Два поля рядом: 2 × (10.7 клетки + 39px рамок) + промежуток + поля страницы */
+    --cell: clamp(18px, calc((100vw - 150px) / 21.4), 34px);
     --lbl: calc(var(--cell) * .7);
     --cell-bg:#17293e;
     --grid-bg:#0a1522;
@@ -183,7 +184,6 @@
     gap:28px;
     justify-content:center;
     align-items:flex-start;
-    flex-wrap:wrap;
   }
 
   .panel{ position:relative; }
@@ -449,10 +449,39 @@
     #screen-game.placing-mode .log-wrap{ display:none; }
   }
 
-  @media (max-width: 760px){
-    .boards{ gap:18px; }
+  /* Телефон вертикально: поля друг под другом, поле противника сверху,
+     своё поле можно свернуть нажатием на «Ваш флот» */
+  @media (max-width: 760px) and (orientation: portrait){
+    :root{ --cell: clamp(22px, calc((100vw - 80px) / 10.7), 34px); }
+    .boards{ flex-wrap:wrap; gap:18px; }
     .boards.battle .panel-enemy{ order:-1; }
     .panel-enemy.waiting{ display:none; }
+
+    .panel-player.collapsible h2{ cursor:pointer; user-select:none; }
+    .panel-player.collapsible h2::after{
+      content:'▾ свернуть';
+      margin-left:8px;
+      padding:2px 8px;
+      border-radius:999px;
+      border:1px solid rgba(122,146,173,.35);
+      letter-spacing:.5px;
+      text-transform:none;
+      font-weight:400;
+    }
+    .panel-player.collapsed h2::after{ content:'▸ показать поле'; }
+    .panel-player.collapsed .grid{ display:none; }
+    .panel-player.collapsed{ width:calc(var(--cell) * 10.7 + 39px); }   /* трекер — во всю ширину поля */
+  }
+
+  /* Телефон горизонтально: оба поля рядом и целиком по высоте экрана, журнал ниже */
+  @media (orientation: landscape) and (max-height: 500px){
+    :root{
+      --cell: clamp(16px, min(calc((100vw - 140px) / 21.4), calc((100vh - 74px) / 10.7)), 34px);
+      --cell: clamp(16px, min(calc((100vw - 140px) / 21.4), calc((100dvh - 74px) / 10.7)), 34px);
+    }
+    body{ padding-top:10px; }
+    .boards{ gap:16px; }
+    .status{ margin:4px 0 10px; }
   }
   @media (hover: none){
     .desktop-only{ display:none; }
@@ -608,7 +637,10 @@ function writeJSON(key, value){
   } catch {}
 }
 
-const settings = { difficulty:'medium', sound:true, shade:true, ...readJSON(KEY_SETTINGS) };
+const settings = { difficulty:'medium', sound:true, shade:true, fleetCollapsed:false, ...readJSON(KEY_SETTINGS) };
+
+const PORTRAIT_PHONE  = window.matchMedia('(max-width: 760px) and (orientation: portrait)');
+const LANDSCAPE_PHONE = window.matchMedia('(orientation: landscape) and (max-height: 500px)');
 const saveSettings = () => writeJSON(KEY_SETTINGS, settings);
 
 function emptyStats(){
@@ -1003,6 +1035,8 @@ function render(){
   $('panel-enemy').classList.toggle('waiting', placing);
   $('panel-enemy').classList.toggle('turn', state.phase === 'player');
   $('panel-player').classList.toggle('turn', state.phase === 'ai');
+  $('panel-player').classList.toggle('collapsible', !placing);
+  $('panel-player').classList.toggle('collapsed', !placing && settings.fleetCollapsed);
   $('waiting-note').hidden   = !placing;
   $('dock').hidden           = !placing;
   $('player-tracker').hidden = placing;
@@ -1768,7 +1802,9 @@ function startBattle(){
   saveGame();
   setStatus('Ваш ход — стреляйте по полю противника');
   render();
-  if(window.innerWidth <= 760) $('panel-enemy').scrollIntoView({ behavior:'smooth', block:'start' });
+  if(PORTRAIT_PHONE.matches || LANDSCAPE_PHONE.matches){
+    $('boards').scrollIntoView({ behavior:'smooth', block:'start' });
+  }
 }
 
 function finish(winner){
@@ -1840,6 +1876,14 @@ $('btn-clear').onclick = () => {
 };
 
 $('btn-start').onclick = startBattle;
+
+// В бою на вертикальном телефоне своё поле сворачивается по нажатию на заголовок.
+document.querySelector('#panel-player h2').addEventListener('click', () => {
+  if(!PORTRAIT_PHONE.matches || state.phase === 'placing') return;
+  settings.fleetCollapsed = !settings.fleetCollapsed;
+  saveSettings();
+  render();
+});
 
 $('btn-sound').onclick = () => {
   settings.sound = !settings.sound;
