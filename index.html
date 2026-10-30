@@ -27,6 +27,20 @@
   *{ box-sizing:border-box; }
   [hidden]{ display:none !important; }
 
+  /* Полосы прокрутки в цветах игры: тонкий голубой ползунок на тёмном фоне */
+  html{ color-scheme:dark; }
+  *{ scrollbar-width:thin; scrollbar-color:rgba(56,189,248,.35) transparent; }
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{
+    background:rgba(56,189,248,.3);
+    border-radius:999px;
+    border:2px solid transparent;
+    background-clip:padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover{ background-color:rgba(56,189,248,.55); }
+  ::-webkit-scrollbar-button{ display:none; }
+
   body{
     margin:0;
     min-height:100vh;
